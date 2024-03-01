@@ -7,8 +7,8 @@ RUN apt-get update \
   apt-get install -q -y --no-install-recommends --no-install-suggests \
     bash \
     inotify-tools \
-    nodejs \
-    npm \
+    #nodejs \
+    #npm \
     yarn \
     build-essential \
     postgresql-client \
