@@ -54,7 +54,7 @@ jobs:
       
       - name: Start containers
         run: |
-          docker-compose up &
+          docker-compose up --no-build &
           elapsed=0
           while [ $elapsed -le 120 ]
           do
