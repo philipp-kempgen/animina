@@ -1,9 +1,10 @@
 defmodule AniminaWeb.InterestsLive do
   use AniminaWeb, :live_view
 
-  alias Phoenix.LiveView.AsyncResult
-  alias AniminaWeb.Registration
   alias Animina.Traits
+  alias AniminaWeb.Registration
+  alias AniminaWeb.SelectFlagsComponent
+  alias Phoenix.LiveView.AsyncResult
 
   @impl true
   def mount(_params, %{"language" => language} = session, socket) do
@@ -38,7 +39,10 @@ defmodule AniminaWeb.InterestsLive do
 
     {:noreply,
      socket
-     |> assign(:categories, AsyncResult.ok(categories, []))
+     |> assign(
+       :categories,
+       AsyncResult.ok(categories, Enum.map(fetched_categories, fn category -> category.id end))
+     )
      |> stream(:categories, fetched_categories)}
   end
 
@@ -50,18 +54,32 @@ defmodule AniminaWeb.InterestsLive do
 
   @impl true
   def handle_info({:flag_selected, flag_id}, socket) do
+    selected = socket.assigns.selected + 1
+    can_select = selected < socket.assigns.max_selected
+
+    for category_id <- socket.assigns.categories.result do
+      send_update(SelectFlagsComponent, id: "flags_#{category_id}", can_select: can_select)
+    end
+
     {:noreply,
      socket
      |> assign(:selected_flags, List.insert_at(socket.assigns.selected_flags, -1, flag_id))
-     |> assign(:selected, socket.assigns.selected + 1)}
+     |> assign(:selected, selected)}
   end
 
   @impl true
   def handle_info({:flag_unselected, flag_id}, socket) do
+    selected = max(socket.assigns.selected - 1, 0)
+    can_select = selected < socket.assigns.max_selected
+
+    for category_id <- socket.assigns.categories.result do
+      send_update(SelectFlagsComponent, id: "flags_#{category_id}", can_select: can_select)
+    end
+
     {:noreply,
      socket
      |> assign(:selected_flags, List.delete(socket.assigns.selected_flags, flag_id))
-     |> assign(:selected, max(socket.assigns.selected - 1, 0))}
+     |> assign(:selected, selected)}
   end
 
   @impl true
@@ -74,23 +92,25 @@ defmodule AniminaWeb.InterestsLive do
         }
       end)
 
-    bulk_result = Traits.bulk_create(interests, Traits.UserInterests, :create)
+    bulk_result =
+      Traits.bulk_create(interests, Traits.UserInterests, :create, stop_on_error?: true)
 
     case bulk_result.status do
       :error ->
-        {:noreply, socket |> put_flash(:error, "Something went wrong adding your interests")}
+        {:noreply,
+         socket |> put_flash(:error, gettext("Something went wrong adding your interests"))}
 
       _ ->
         {:noreply,
          socket
          |> assign(selected: 0)
          |> assign(selected_flags: [])
-         |> put_flash(:info, "Your interests have been added succesfully")
+         |> put_flash(:info, gettext("Your interests have been added succesfully"))
          |> push_navigate(to: "/registration/interests")}
     end
   end
 
-  defp fetch_categories() do
+  defp fetch_categories do
     Traits.Category
     |> Ash.Query.for_read(:read)
     |> Traits.read!()
@@ -114,7 +134,7 @@ defmodule AniminaWeb.InterestsLive do
         <div id="stream_categories" phx-update="stream">
           <div :for={{dom_id, category} <- @streams.categories} id={"#{dom_id}"}>
             <.live_component
-              module={AniminaWeb.SelectFlagsComponent}
+              module={SelectFlagsComponent}
               id={"flags_#{category.id}"}
               category={category}
               language={@language}
