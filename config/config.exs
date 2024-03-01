@@ -32,7 +32,7 @@ config :animina, AniminaWeb.Endpoint,
 config :animina, Animina.Mailer, adapter: Swoosh.Adapters.Local
 
 config :animina,
-  ash_apis: [Animina.Accounts, Animina.Traits, Animina.GeoData]
+  ash_apis: [Animina.Accounts, Animina.Traits, Animina.GeoData, Animina.Narratives]
 
 config :ash, :custom_types, ash_phone_number: Animina.AshPhoneNumber
 
@@ -68,6 +68,8 @@ config :phoenix, :json_library, Jason
 
 # I18n
 config :animina, AniminaWeb.Gettext, default_locale: "en", locales: ~w(en de)
+
+config :animina, AniminaWeb.FlagsLive, max_selected: 20
 
 config :spark, :formatter,
   remove_parens?: true,
